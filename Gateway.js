@@ -14,6 +14,7 @@ var randomstring = require("randomstring");
 var forever = require('forever-monitor');
 var MongoClient = require('mongodb').MongoClient;
 
+var exec = require('child_process').exec;
 
 var configuration = null;
 var routes = null;
@@ -31,11 +32,22 @@ var MongoDBstate = "unknown";
 
 
 function mongoCheck() {
-    if (MongoDB == null)
+    // console.log("mongoCheck", config.daemons.mongodb.MONGO_URL);
+    if (MongoDB == null || MongoDBstate == "dead")
 	MongoClient.connect(config.daemons.mongodb.MONGO_URL, function(err, db) {
 	  if (db == null) {
-	      console.log("still dead after connect");
+	      console.log(config.daemons.mongodb.MONGO_URL, " failed to connect");
 	      MongoDBstate = "dead";
+
+              exec("/usr/local/bin/getMongoipaddress", function(error, stdout, stderr){ 
+                  console.log("/usr/local/bin/getMongoipaddress", "error=", error, "stdout=", stdout, "stderr=", stderr); 
+                    stdout = stdout.replace(/[ \t\n]/g,""); // remove whitespace
+                    if (stdout && stdout.length > 5) {
+                       config.daemons.mongodb.MONGO_URL =  config.daemons.mongodb.MONGO_URL.replace(/\/\/.*:/, "//" + stdout +":");
+                       console.log("Found MongoDB IP address", config.daemons.mongodb.MONGO_URL);
+                       MongoDBstate = "connecting";
+                    }
+              });
 	  } else {
 	      MongoDB = db;
 	      MongoDBstate = "connecting";
@@ -47,10 +59,10 @@ function mongoCheck() {
 	  else {
 	      MongoDBstate = "lost";
 	  }
-      });
-    if (MongoDBstate == "dead" || MongoDBstate == "connecting" || MongoDBstate == "lost")
-	launchMongoDB();
     // console.log("mongoCheck", MongoDBstate);
+    if (MongoDBstate == "dead" || /* MongoDBstate == "connecting" || */ MongoDBstate == "lost")
+	launchMongoDB();
+    });
     return MongoDBstate;
 }
 // setInterval(mongoCheck, 5000);
