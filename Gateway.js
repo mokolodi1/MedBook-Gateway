@@ -16,6 +16,8 @@ var MongoClient = require('mongodb').MongoClient;
 
 var exec = require('child_process').exec;
 
+require( "console-stamp" )( console, { pattern : "dd/mm/yyyy HH:MM:ss.l" } );
+
 var configuration = null;
 var routes = null;
 var apps = null;
@@ -31,23 +33,27 @@ var MongoDBstates = ["unknown", "dead", "live", "connecting", "lost"]
 var MongoDBstate = "unknown";
 
 
+function getMongoipaddress(callBack) {
+  exec("/usr/local/bin/getMongoipaddress", function(error, stdout, stderr){ 
+      console.log("/usr/local/bin/getMongoipaddress", "error=", error, "stdout=", stdout, "stderr=", stderr); 
+        stdout = stdout.replace(/[ \t\n]/g,""); // remove whitespace
+        if (stdout && stdout.length > 5) {
+           config.daemons.mongodb.MONGO_URL =  config.daemons.mongodb.MONGO_URL.replace(/\/\/.*:/, "//" + stdout +":");
+           console.log("Found MongoDB IP address", config.daemons.mongodb.MONGO_URL);
+           MongoDBstate = "connecting";
+           if (callBack)
+              callBack(config.daemons.mongodb.MONGO_URL);
+        }
+  });
+}
 function mongoCheck() {
-    // console.log("mongoCheck", config.daemons.mongodb.MONGO_URL);
+    console.log("mongoCheck", config.daemons.mongodb.MONGO_URL);
     if (MongoDB == null || MongoDBstate == "dead")
 	MongoClient.connect(config.daemons.mongodb.MONGO_URL, function(err, db) {
 	  if (db == null) {
 	      console.log(config.daemons.mongodb.MONGO_URL, " failed to connect");
 	      MongoDBstate = "dead";
 
-              exec("/usr/local/bin/getMongoipaddress", function(error, stdout, stderr){ 
-                  console.log("/usr/local/bin/getMongoipaddress", "error=", error, "stdout=", stdout, "stderr=", stderr); 
-                    stdout = stdout.replace(/[ \t\n]/g,""); // remove whitespace
-                    if (stdout && stdout.length > 5) {
-                       config.daemons.mongodb.MONGO_URL =  config.daemons.mongodb.MONGO_URL.replace(/\/\/.*:/, "//" + stdout +":");
-                       console.log("Found MongoDB IP address", config.daemons.mongodb.MONGO_URL);
-                       MongoDBstate = "connecting";
-                    }
-              });
 	  } else {
 	      MongoDB = db;
 	      MongoDBstate = "connecting";
@@ -65,7 +71,6 @@ function mongoCheck() {
     });
     return MongoDBstate;
 }
-// setInterval(mongoCheck, 5000);
 
 
 /*
@@ -91,7 +96,7 @@ function launchMongoDB() {
 
 
 function launch(app, res) {
- console.log("Gateway launching", app.route, app.cwd, app.run);
+ console.log("Gateway launching", app.route, app.cwd, app.run, config && config.daemons && config.daemons.mongodb && config.daemons.mongodb.MONGO_URL);
  var cmd =  app.run.split(" ");
  console.log("launch", cmd);
  var child = forever.start(cmd, {
@@ -104,7 +109,7 @@ function launch(app, res) {
         MONGO_URL : config.daemons.mongodb.MONGO_URL,
      },
      cwd : app.cwd,
-     max: 3,
+     max: 1,
  });
 
  child.on('forever watch:restart', function(info) {
@@ -241,6 +246,7 @@ run = function() {
   }
 
   configApp(args[0]);
+  mongoCheck();
 
   function forward(req, res) {
         var port = getPort(req);
@@ -252,11 +258,17 @@ run = function() {
           target: "http://localhost:"+port,
         },function(e){
           log_error(e,req);
-	  console.log("web error", e);
-	  launch(getApp(req), res);
-	  res.writeHead(500, { 'Content-Type': 'text/html' });
-          res.write(reloadFile, "binary");
-	  res.end();
+	  // console.log("Error", req.url, port,  e);
+          var app = getApp(req);
+          console.log("app", app);
+          if (app.run && app.cwd) {
+              console.log("restarting app", app);
+
+              launch(app, res);
+              res.writeHead(500, { 'Content-Type': 'text/html' });
+              res.write(reloadFile, "binary");
+              res.end();
+          }
       });
   }
 
