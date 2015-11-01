@@ -47,7 +47,7 @@ function getMongoipaddress(callBack) {
   });
 }
 function mongoCheck() {
-    console.log("mongoCheck", config.daemons.mongodb.MONGO_URL);
+    // console.log("mongoCheck", config.daemons.mongodb.MONGO_URL);
     if (MongoDB == null || MongoDBstate == "dead")
 	MongoClient.connect(config.daemons.mongodb.MONGO_URL, function(err, db) {
 	  if (db == null) {
@@ -65,10 +65,12 @@ function mongoCheck() {
 	  else {
 	      MongoDBstate = "lost";
 	  }
-    // console.log("mongoCheck", MongoDBstate);
-    if (MongoDBstate == "dead" || /* MongoDBstate == "connecting" || */ MongoDBstate == "lost")
-	launchMongoDB();
-    });
+          /*
+          console.log("mongoCheck", MongoDBstate);
+          if (MongoDBstate == "dead" || MongoDBstate == "lost")
+    	      launchMongoDB();
+           */
+        });
     return MongoDBstate;
 }
 
@@ -86,6 +88,7 @@ function launchMongoDB() {
  var cmd =  config.daemons.mongodb.run.split(" ");
  console.log("launch mongodb", cmd);
  var child = forever.start(cmd, {
+     uid: "mongodb",
      silent : true,
      fork: true,
      killTree: false,
@@ -93,16 +96,24 @@ function launchMongoDB() {
  });
 }
 
-
+MinimumLaunchInterval = 30000; // 30 seconds
 
 function launch(app, res) {
+ var now = new Date();
+ if (app.lastStart != null && ((now - app.lastStart) <= MinimumLaunchInterval)) {
+     console.log("Gateway too soon to launch", app.route, (now  - app.lastStart));
+     return
+ }
+ app.lastStart = now;
  console.log("Gateway launching", app.route, app.cwd, app.run, config && config.daemons && config.daemons.mongodb && config.daemons.mongodb.MONGO_URL);
+
  var cmd =  app.run.split(" ");
  console.log("launch", cmd);
  var child = forever.start(cmd, {
      silent : true,
      fork: true,
      killTree: false,
+     uid: "galaxy",
      env: {
 	PORT : app.port,
 	ROUTE : app.route,
@@ -298,7 +309,7 @@ run = function() {
 
                    var signature = hash( gateway_credentials.json );
                    if ( signature == gateway_credentials.signature ) {
-                       if (cache) console.log("credentials cached");
+                       // if (cache) console.log("credentials cached");
                        return true;
                    }
                }
@@ -464,15 +475,20 @@ configApp = function(path) {
   }
 
   function relaunch() {
-       if (mongoCheck() == "LIVE") // if mongo is not live, don't bother checking anything else.
+       // console.log("relaunch 1");
+           // console.log("relaunch 2");
 	   pingable.map(function(app) {
-	       if (app.ping)
+               // console.log("relaunch 3");
+	       if (app.ping) {
+		   var url = "http://localhost:" + app.port + app.ping;
+                   // console.log("Ping", app.route || app.daemon, url);
 		   http.get("http://localhost:" + app.port + app.ping, function(res) {
-		       console.log("Alive", app.route || app.daemon, " ping " + res.statusCode);
+		       // console.log("Alive", app.route || app.daemon, " ping " + res.statusCode);
 		   }).on('error', function(e) {
 		       console.log("DEAD", app.route || app.daemon, " ping " + e.message);
 		       launch(app, null);
 		   });
+               }
 	   });
   }
 
