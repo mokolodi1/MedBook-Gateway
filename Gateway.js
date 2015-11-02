@@ -92,7 +92,6 @@ function launchMongoDB() {
      silent : true,
      fork: true,
      killTree: false,
-     max: 1,
  });
 }
 
@@ -267,11 +266,12 @@ run = function() {
         }
         proxy.web(req, res, {
           target: "http://localhost:"+port,
+          timeout:1000
         },function(e){
           log_error(e,req);
 	  // console.log("Error", req.url, port,  e);
           var app = getApp(req);
-          console.log("app", app);
+          console.log("app error", app, e, req.url);
           if (app.run && app.cwd) {
               console.log("restarting app", app);
 
@@ -279,7 +279,7 @@ run = function() {
               res.writeHead(500, { 'Content-Type': 'text/html' });
               res.write(reloadFile, "binary");
               res.end();
-          }
+          } 
       });
   }
 
