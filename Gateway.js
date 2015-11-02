@@ -9,6 +9,7 @@ var fs = require('fs');
 var url = require('url');
 var path = require('path');
 var http = require('http');
+
 var crypto = require('crypto');
 var randomstring = require("randomstring");
 var forever = require('forever-monitor');
@@ -82,7 +83,6 @@ function mongoCheck() {
    cwd = "/"
    run = "/Users/tedgoldstein/Downloads/mongodb-osx-x86_64-2.6.10/bin/mongod"
    uid = "tedgoldstein"
-*/
 
 function launchMongoDB() {
  var cmd =  config.daemons.mongodb.run.split(" ");
@@ -94,48 +94,49 @@ function launchMongoDB() {
      killTree: false,
  });
 }
+*/
 
 MinimumLaunchInterval = 30000; // 30 seconds
 
-function launch(app, res) {
- var now = new Date();
- if (app.lastStart != null && ((now - app.lastStart) <= MinimumLaunchInterval)) {
-     console.log("Gateway too soon to launch", app.route, (now  - app.lastStart));
-     return
- }
- app.lastStart = now;
- console.log("Gateway launching", app.route, app.cwd, app.run, config && config.daemons && config.daemons.mongodb && config.daemons.mongodb.MONGO_URL);
+function launch(app, req, res) {
+     var now = new Date();
+     if (app.lastStart != null && ((now - app.lastStart) <= MinimumLaunchInterval)) {
+         console.log("Gateway too soon to launch", app.route, (now  - app.lastStart));
+         return
+     }
+     app.lastStart = now;
+     console.log("Gateway launching", app.route, app.cwd, app.run, config && config.daemons && config.daemons.mongodb && config.daemons.mongodb.MONGO_URL);
 
- var cmd =  app.run.split(" ");
- console.log("launch", cmd);
- var child = forever.start(cmd, {
-     silent : true,
-     fork: true,
-     killTree: false,
-     uid: "galaxy",
-     env: {
-	PORT : app.port,
-	ROUTE : app.route,
-        MONGO_URL : config.daemons.mongodb.MONGO_URL,
-     },
-     cwd : app.cwd,
-     max: 1,
- });
+     var cmd =  app.run.split(" ");
+     console.log("launch", cmd);
+     var child = forever.start(cmd, {
+         silent : true,
+         fork: true,
+         killTree: false,
+         uid: "galaxy",
+         env: {
+            PORT : app.port,
+            ROUTE : app.route,
+            MONGO_URL : config.daemons.mongodb.MONGO_URL,
+         },
+         cwd : app.cwd,
+         max: 1,
+     });
 
- child.on('forever watch:restart', function(info) {
-     if (res) res.write('Restaring script because ' + info.file + ' changed');
-     console.error('Restaring script because ' + info.file + ' changed');
- });
+     child.on('forever watch:restart', function(info) {
+         if (res) res.write('Restaring script because ' + info.file + ' changed');
+         console.error('Restaring script because ' + info.file + ' changed');
+     });
 
- child.on('forever restart', function() {
-     if (res) res.write('Forever restarting script for ' + child.times + ' time');
-     console.error('Forever restarting script for ' + child.times + ' time');
- });
+     child.on('forever restart', function() {
+         if (res) res.write('Forever restarting script for ' + child.times + ' time');
+         console.error('Forever restarting script for ' + child.times + ' time');
+     });
 
- child.on('forever exit:code', function(code) {
-     if (res) res.write('Forever detected script exited with code ' + code);
-     console.error('Forever detected script exited with code ' + code);
- });
+     child.on('forever exit:code', function(code) {
+         if (res) res.write('Forever detected script exited with code ' + code);
+         console.error('Forever detected script exited with code ' + code);
+     });
 }
 
 
@@ -259,26 +260,63 @@ run = function() {
   mongoCheck();
 
   function forward(req, res) {
-        var port = getPort(req);
-        if (req.url.indexOf("/xena") == 0) {
-            // console.log("xena directing to port", port, "mapping url", req.url, "to", req.url.replace("/xena","/"));
-            req.url =  req.url.replace("/xena","");
-        }
-        proxy.web(req, res, {
-          target: "http://localhost:"+port,
-          timeout:1000
-        },function(e){
-          log_error(e,req);
-	  // console.log("Error", req.url, port,  e);
-          var app = getApp(req);
-          console.log("app error", app, e, req.url);
-          if (app.run && app.cwd) {
-              console.log("restarting app", app);
 
-              launch(app, res);
+      if (req.url.indexOf("/proj") == 0) {
+        // console.log("xenafiling");
+        proxy.web(req, res, {
+          target: "https://genome-cancer.soe.ucsc.edu/" ,
+          timeout:10000,
+          /*
+          xfwd: true,
+          toProxy: true,
+          prependPath: true,
+          */
+        },function(e){
+          console.log("xena app error", req.url, e.code);
+        });
+        return;
+      } // if xena
+
+      var app = getApp(req);
+      var port = getPort(req);
+
+      var origReqUrl = req.url;
+
+      var protocol = "http";
+      if (req.protocol)
+            protocol = req.protocol;
+
+      var host = "localhost";
+      if (app.host)
+            host = app.host;
+
+      var target = protocol+"://"+host+":"+port;
+
+
+      if (false && req.url.indexOf("/xena") == 0) {
+            req.url =  req.url.replace("/xena","/proj/site/xena");
+            /*
+            if (req.url.length == 0)
+                req.url = "/";
+                */
+            req.client.servername = "su2c-dev.ucsc.edu";
+            req.host = "su2c-dev.ucsc.edu";
+            req.headers.host = "su2c-dev.ucsc.edu";
+            console.log("xena redirecting to", target, "mapping ", origReqUrl, "to", req.url, req);
+      } // if xena
+        proxy.web(req, res, {
+          target: target,
+          timeout:10000
+        },function(e){
+          console.log("app error", origReqUrl, target, e.code);
+
+          if (app.run && app.cwd) {
+              ping(app, req, res);
+              /*
               res.writeHead(500, { 'Content-Type': 'text/html' });
               res.write(reloadFile, "binary");
               res.end();
+              */
           } 
       });
   }
@@ -298,11 +336,15 @@ run = function() {
   function mustLogin(firstPart, req, res) {
       var cookies = new Cookies(req, res);
 
+      // console.log("ml 1");
+
       function checkCredentials(cache, gateway_token) {
          if (gateway_token)
            try {
+          // console.log("cc 2");
                var gateway_credentials = JSON.parse(gateway_token);
                var obj = JSON.parse(gateway_credentials.json);
+               // console.log("check", obj, firstPart);
 
 
                if ( obj.collaborations.indexOf(firstPart) >= 0) {
@@ -324,11 +366,12 @@ run = function() {
       function requestCredentials() {
         var options = {
           method: 'GET',
+          host: "127.0.0.1",
           path: '/medbookUser',
-          port: final,
-          headers: { 'cookie': req.headers.cookie, },
+          port: 10001,
+          headers: { 'Cookie': req.headers.cookie, },
           keepAlive: true,
-          keepAliveMsecs: 3600000, // an hour
+          keepAliveMsecs: 100, // an hour
          };
          var medbookUserReq = http.request(options, function(medbookUserRes) {
                medbookUserRes.setEncoding('utf8');
@@ -339,23 +382,33 @@ run = function() {
                    var gateway_credentials = { signature: hash( all ), json: all, }
                    var gateway_token = JSON.stringify(gateway_credentials);
                    cookies.set("gateway_token", gateway_token);
-                   if (checkCredentials(false, gateway_token))
+                   if (checkCredentials(false, gateway_token)) {
+                      console.log("credentials verify");
                        forward(req, res);
-                   else
+                   } else {
+                      console.log("credentials fail");
                        signIn(req, res);
+                   }
                });
          });
         medbookUserReq.on("error", function(err) {
+           console.log("error on request 4, please signIn", err);
              signIn(req, res);
         });
         medbookUserReq.end();
       }; // requestCredentials()
 
-      if (checkCredentials(true, cookies.get("gateway_token")))
+          // console.log("rc 6");
+      if (checkCredentials(true, cookies.get("gateway_token"))) {
+         // console.log("rc 7");
          forward(req, res);
-      else
+      } else {
+         // console.log("rc 8");
          requestCredentials();
+      }
+      // console.log("rc 9");
   } // mustLogin
+
 
   function main(req, res) {
     var hostname = req.headers.host
@@ -401,7 +454,7 @@ run = function() {
       server = require('http').createServer(main);
 
   var httpProxy = require('http-proxy')
-  var proxy = httpProxy.createProxy({ ws : true });
+  var proxy = httpProxy.createProxy({ ws : true, xfwd : true });
 
 
 
@@ -411,7 +464,7 @@ run = function() {
       target: "http://localhost:" + port,
     },function(e){
       log_error(e, req);
-	launch(getApp(req));
+	launch(getApp(req), req, res);
 
 	console.log("WS ERROR", e);
 	/*
@@ -448,6 +501,18 @@ splitHostPort = function(s) {
   return ret;
 };
 
+function ping(app, req, res) {
+   if (app.ping) {
+       var url = "http://localhost:" + app.port + app.ping;
+       http.get(url, function(res) {
+           // console.log("ALIVE", app.route || app.daemon, url);
+       }).on('error', function(e) {
+           console.log("DEAD", app.route || app.daemon, url, e.message);
+           launch(app, req, res);
+       });
+   }
+}
+
 
 configApp = function(path) {
   try {
@@ -474,101 +539,92 @@ configApp = function(path) {
     auth[ca.route] = ca.auth;
   }
 
-  function relaunch() {
-       // console.log("relaunch 1");
-           // console.log("relaunch 2");
-	   pingable.map(function(app) {
-               // console.log("relaunch 3");
-	       if (app.ping) {
-		   var url = "http://localhost:" + app.port + app.ping;
-                   // console.log("Ping", app.route || app.daemon, url);
-		   http.get("http://localhost:" + app.port + app.ping, function(res) {
-		       // console.log("Alive", app.route || app.daemon, " ping " + res.statusCode);
-		   }).on('error', function(e) {
-		       console.log("DEAD", app.route || app.daemon, " ping " + e.message);
-		       launch(app, null);
-		   });
-               }
-	   });
-  }
+function autostart() {
+   // console.log("autostart 1");
+       // console.log("autostart 2");
+       pingable.map(function(app) {
+           // console.log("autostart 3");
+           ping(app, null, null);
+       });
+}
 
-  if (parseInt(config.server.pingIntervalMS)) {
-      console.log( "pinging every", config.server.pingIntervalMS);
-      setInterval(relaunch, config.server.pingIntervalMS);
-  }
+if (parseInt(config.server.pingIntervalMS)) {
+  console.log( "pinging every", config.server.pingIntervalMS);
+  setInterval(autostart, config.server.pingIntervalMS);
+}
 };
 
 serveMenu = function(req, res) {
-  var menu = [];
-  var routeHacks = "";
-  for (appName in config.apps) {
-    var ca = config.apps[appName];
-    menuItem = String(ca.menuItem);
-    if (menuItem === null) {
-      menuItem = ca.route;
-    }
-    menuItem = menuItem.replace(/\ /g, "&nbsp;");
-    href = ca.path ? ca.path : ca.route;
+var menu = [];
+var routeHacks = "";
+for (appName in config.apps) {
+var ca = config.apps[appName];
+menuItem = String(ca.menuItem);
+if (menuItem === null) {
+  menuItem = ca.route;
+}
+menuItem = menuItem.replace(/\ /g, "&nbsp;");
+href = ca.path ? ca.path : ca.route;
 
-    link = "<a target='_self' class='MedBookLink' href='" + href  + "'>" + menuItem + "</a>";
-    routeHacks += "if (Router && !('" + ca.route + "' in  Router.routes)) Router.route('" + ca.route + "', function () {}, {where: 'server'});\n";
-    if (ca.menuItem) {
-      if (ca.menuPosition !== void 0) {
-        menu.splice(ca.menuPosition, 0, link);
-      } else {
-        menu.push(link);
-      }
-    }
+link = "<a target='_self' class='MedBookLink' href='" + href  + "'>" + menuItem + "</a>";
+routeHacks += "if (Router && !('" + ca.route + "' in  Router.routes)) Router.route('" + ca.route + "', function () {}, {where: 'server'});\n";
+if (ca.menuItem) {
+  if (ca.menuPosition !== void 0) {
+    menu.splice(ca.menuPosition, 0, link);
+  } else {
+    menu.push(link);
   }
+}
+}
 
-  var text = String(menuFile).replace("LIST", (menu.map(function(a) {
-    return "<li>" + a + "</li><br/>";
-  })).join(''));
+var text = String(menuFile).replace("LIST", (menu.map(function(a) {
+return "<li>" + a + "</li><br/>";
+})).join(''));
 
-  text += "<script>if (Router) {\n" + routeHacks + "}\n</script>";
+text += "<script>if (Router) {\n" + routeHacks + "}\n</script>";
 
 
-  res.writeHead(200);
-  res.write(text, "binary");
-  return res.end();
+res.writeHead(200);
+res.write(text, "binary");
+return res.end();
 };
 
 serveScript = function(req, res, script) {
-  res.writeHead(200, {'Content-Type': 'application/x-javascript'});
-  res.write(script, "binary");
-  return res.end();
+res.writeHead(200, {'Content-Type': 'application/x-javascript'});
+res.write(script, "binary");
+return res.end();
 };
 
 
 var mimeTypes = {
-    "html": "text/html",
-    "jpeg": "image/jpeg",
-    "jpg": "image/jpeg",
-    "png": "image/png",
-    "js": "text/javascript",
-    "css": "text/css"};
+"html": "text/html",
+"jpeg": "image/jpeg",
+"jpg": "image/jpeg",
+"png": "image/png",
+"js": "text/javascript",
+"css": "text/css"};
 
-        
+    
 function serveFile(req, res, dir) {
-    var uri = url.parse(req.url).pathname;
-    // console.log("serveFile uri", uri);
-    if (uri == null || uri == "" || uri == "/")
-       uri = "index.html"
-    var filename = path.join(dir, uri);
-    fs.exists(filename, function(exists) {
-        if(!exists) {
-            console.log("not exists: " + filename);
-            res.writeHead(404, {'Content-Type': 'text/plain'});
-            res.end();
-            return;
-        }
-        var mimeType = mimeTypes[path.extname(filename).split(".")[1]];
-        res.writeHead(200, mimeType);
+var uri = url.parse(req.url).pathname;
+// console.log("serveFile uri", uri);
+if (uri == null || uri == "" || uri == "/")
+   uri = "index.html"
+var filename = path.join(dir, uri);
+fs.exists(filename, function(exists) {
+    if(!exists) {
+        console.log("not exists: " + filename);
+        res.writeHead(404, {'Content-Type': 'text/plain'});
+        res.end();
+        return;
+    }
+    var mimeType = mimeTypes[path.extname(filename).split(".")[1]];
+    res.writeHead(200, mimeType);
 
-        var fileStream = fs.createReadStream(filename);
-        fileStream.pipe(res);
+    var fileStream = fs.createReadStream(filename);
+    fileStream.pipe(res);
 
-    }); //end fs.exists
+}); //end fs.exists
 
 };
 
@@ -579,14 +635,14 @@ fs.watchFile("/data/MedBook/Gateway/menu.html", readMenu);
 fs.watchFile(postScriptFilename, readPostScript);
 
 function log_error(e,req){
-  if(e){
-    /*
-    console.log("log_error");
-    console.error(e.message);
-    console.log(req.headers.host,'-->');
-    console.log('-----');
-    */
-  }
+if(e){
+/*
+console.log("log_error");
+console.error(e.message);
+console.log(req.headers.host,'-->');
+console.log('-----');
+*/
+}
 }
 
 run();
