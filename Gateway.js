@@ -504,6 +504,7 @@ splitHostPort = function(s) {
 function ping(app, req, res) {
    if (app.ping) {
        var url = "http://localhost:" + app.port + app.ping;
+       // console.log("ping", app.route || app.daemon, url);
        http.get(url, function(res) {
            // console.log("ALIVE", app.route || app.daemon, url);
        }).on('error', function(e) {
@@ -517,6 +518,7 @@ function ping(app, req, res) {
 configApp = function(path) {
   try {
     config = toml.parse(fs.readFileSync(path));
+    console.log("reading config", config);
   } catch (_error) {
     console.log("Failed to parse configuration file " + path);
     return process.exit(1);
