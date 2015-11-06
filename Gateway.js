@@ -118,6 +118,8 @@ function launch(app, req, res) {
             PORT : app.port,
             ROUTE : app.route,
             MONGO_URL : config.daemons.mongodb.MONGO_URL,
+            HOST : config.server.host,
+            ROOT_URL: (config.server.ssl  ? "https://" : "http://") + config.server.host + app.route
          },
          cwd : app.cwd,
          max: 1,
