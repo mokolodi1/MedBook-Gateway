@@ -313,6 +313,7 @@ run = function() {
           console.log("app error", origReqUrl, target, e.code);
 
           if (app.run && app.cwd) {
+  
               ping(app, req, res);
               /*
               res.writeHead(500, { 'Content-Type': 'text/html' });
@@ -508,7 +509,7 @@ function ping(app, req, res) {
        var url = "http://localhost:" + app.port + app.ping;
        // console.log("ping", app.route || app.daemon, url);
        http.get(url, function(res) {
-           // console.log("ALIVE", app.route || app.daemon, url);
+           console.log("ALIVE", app.route || app.daemon, url);
        }).on('error', function(e) {
            console.log("DEAD", app.route || app.daemon, url, e.message);
            launch(app, req, res);
