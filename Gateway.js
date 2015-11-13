@@ -434,8 +434,8 @@ run = function() {
 	}
         return serveFile(req, res, '/data/home/galaxy/hexProxy/');
     }
-    /*if (req.url.indexOf("/public") == 0)
-        return serveFile(req, res, '/data/public/');*/
+    if (req.url.indexOf("/serve") == 0)
+        return serveFile(req, res, '/data/serve/');
     
 
     var urlPath = req.url.split("/");
