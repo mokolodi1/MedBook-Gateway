@@ -682,5 +682,5 @@ console.log('-----');
 }
 }
 
-fixGalaxyOwner();
+// fixGalaxyOwner();
 run();
