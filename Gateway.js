@@ -6,6 +6,8 @@ if (args.length < 1) {
 var Cookies = require('cookies');
 var toml = require('toml');
 var fs = require('fs');
+
+
 var url = require('url');
 var path = require('path');
 var http = require('http');
@@ -98,6 +100,7 @@ function launchMongoDB() {
 
 MinimumLaunchInterval = 30000; // 30 seconds
 
+
 function launch(app, req, res) {
      var now = new Date();
      if (app.lastStart != null && ((now - app.lastStart) <= MinimumLaunchInterval)) {
@@ -107,14 +110,26 @@ function launch(app, req, res) {
      app.lastStart = now;
      console.log("Gateway launching", app.route, app.cwd, app.run, config && config.daemons && config.daemons.mongodb && config.daemons.mongodb.MONGO_URL);
 
-     var cmd =  app.run.split(" ");
+     var cmd = app.run;
+
+     if (process.getuid() == 0) cmd = "su galaxy -c " + cmd;
+     cmd = cmd.split(" ");
      console.log("launch", cmd);
+
      var child = forever.start(cmd, {
          silent : true,
          fork: true,
          killTree: false,
-         uid: "galaxy",
+         pidFile: './pidFile',
          env: {
+            HOME:  "/data/home/galaxy",
+            SHELL: "/bin/bash",
+            USER: "galaxy",
+            LOGNAME: "galaxy",
+
+            // This should be much less and pared down to the essentials.
+            PATH: "/data/home/galaxy/.local/bin:/data/packages/stuartlab/perl/Tools:/data/packages/py-lib/:/usr/lib64/qt-3.3/bin:/usr/local/bin/mongodb/bin:/data/packages/drl-graph-layout/bin:/data/packages/apache-maven-3.0.4/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/data/home/galaxy/bin:/data/packages/stuartlab/perl/Tools:/data/packages/py-lib/:/usr/local/apache-maven-3.2.2/bin",
+
             PORT : app.port,
             ROUTE : app.route,
             MONGO_URL : config.daemons.mongodb.MONGO_URL,
@@ -161,6 +176,23 @@ menuFile = null;
 reloadFile = null;
 postScript = null;
 
+function fixGalaxyOwner(run) {
+    var fgo = "/data/MedBook/.fix-galaxy-owner"; // This file itself won't be fixed. An exericise to the reader to see why.
+    if (!fs.existsSync(fgo)) {
+        var exec = require('child_process').exec, child;
+        fs.writeFileSync(fgo, "started\n", "utf8")
+        child = exec('chown -R galaxy /data/home/galaxy/.meteor  /data/MedBook',
+              function (error, stdout, stderr) {
+                  console.log('chown stdout: ' + stdout);
+                  console.log('chown stderr: ' + stderr);
+                  if (error !== null) {
+                        console.log('chown exec error: ' + error);
+                  } 
+                  fs.writeFileSync(fgo, "finished\nstdout:" + stdout + "\nstderr:" + stderr, "utf8");
+               });
+
+    } 
+} 
 
 getPort = function(req) {
     var a = req.url.split("/");
@@ -649,4 +681,5 @@ console.log('-----');
 }
 }
 
+fixGalaxyOwner();
 run();
