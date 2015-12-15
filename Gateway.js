@@ -134,6 +134,14 @@ function launch(app, req, res) {
             USER: "galaxy",
             LOGNAME: "galaxy",
 
+            // for CbioPortal
+            CATALINA_HOME: "/usr/local/tomcat7",
+            CLASSPATH: "/usr/local/tomcat7/bin/bootstrap.jar:/usr/local/tomcat7/bin/tomcat-juli.jar",
+            JAVA_HOME: "/usr/lib/jvm/java-1.7.0-openjdk.x86_64",
+            BASEDIR: "/usr/local/tomcat7",
+            PORTAL_HOME: "/data/home/galaxy/src/cbioportal.org",
+            NODE_PATH:"/usr/local/lib/node_modules:$NODE_PATH",
+
             // This should be much less and pared down to the essentials.
             PATH: "/data/home/galaxy/.local/bin:/data/packages/stuartlab/perl/Tools:/data/packages/py-lib/:/usr/lib64/qt-3.3/bin:/usr/local/bin/mongodb/bin:/data/packages/drl-graph-layout/bin:/data/packages/apache-maven-3.0.4/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/data/home/galaxy/bin:/data/packages/stuartlab/perl/Tools:/data/packages/py-lib/:/usr/local/apache-maven-3.2.2/bin",
 
