@@ -116,11 +116,18 @@ function launch(app, req, res) {
      cmd = cmd.split(" ");
      console.log("launch", cmd);
 
+     var logs = '/data/MedBook/Gateway/logs' + app.route;
+
      var child = forever.start(cmd, {
          silent : true,
          fork: true,
          killTree: false,
          pidFile: './pidFile',
+
+         logFile: logs + '.log', // Path to log output from forever process (when daemonized)
+         outFile: logs + '.out', // Path to log output from child stdout
+         errFile: logs + '.err', // Path to log output from child stderr
+
          env: {
             HOME:  "/data/home/galaxy",
             SHELL: "/bin/bash",
@@ -336,13 +343,13 @@ run = function() {
             req.client.servername = "su2c-dev.ucsc.edu";
             req.host = "su2c-dev.ucsc.edu";
             req.headers.host = "su2c-dev.ucsc.edu";
-            console.log("xena redirecting to", target, "mapping ", origReqUrl, "to", req.url, req);
+            // console.log("xena redirecting to", target, "mapping ", origReqUrl, "to", req.url, req);
       } // if xena
         proxy.web(req, res, {
           target: target,
           timeout:10000
         },function(e){
-          console.log("app error", origReqUrl, target, e.code);
+          // console.log("app error", origReqUrl, target, e.code);
 
           if (app.run && app.cwd) {
   
@@ -391,9 +398,9 @@ run = function() {
                    }
                }
            } catch (err) {
-               console.log("credential failure" , err);
-               console.log("gateway_token" , gateway_token);
-               console.log("gateway_credentials" , gateway_credentials);
+               // console.log("credential failure" , err);
+               // console.log("gateway_token" , gateway_token);
+               // console.log("gateway_credentials" , gateway_credentials);
            }
          return false;
       }
@@ -418,16 +425,16 @@ run = function() {
                    var gateway_token = JSON.stringify(gateway_credentials);
                    cookies.set("gateway_token", gateway_token);
                    if (checkCredentials(false, gateway_token)) {
-                      console.log("credentials verify");
+                      // console.log("credentials verify");
                        forward(req, res);
                    } else {
-                      console.log("credentials fail");
+                      // console.log("credentials fail");
                        signIn(req, res);
                    }
                });
          });
         medbookUserReq.on("error", function(err) {
-           console.log("error on request 4, please signIn", err);
+           // console.log("error on request 4, please signIn", err);
              signIn(req, res);
         });
         medbookUserReq.end();
@@ -460,7 +467,7 @@ run = function() {
     if (req.url.indexOf("/swat") == 0 ) {
         req.url = req.url.replace("/swat", "");
  	if (req.url.indexOf("/..") >=0 ) {
-            console.log(".. not allowed: " + req.url);
+            // console.log(".. not allowed: " + req.url);
             res.writeHead(404, {'Content-Type': 'text/plain'});
             res.end();
 	}
@@ -541,7 +548,7 @@ function ping(app, req, res) {
        var url = "http://localhost:" + app.port + app.ping;
        // console.log("ping", app.route || app.daemon, url);
        http.get(url, function(res) {
-           console.log("ALIVE", app.route || app.daemon, url);
+           // console.log("ALIVE", app.route || app.daemon, url);
        }).on('error', function(e) {
            console.log("DEAD", app.route || app.daemon, url, e.message);
            launch(app, req, res);
@@ -553,7 +560,7 @@ function ping(app, req, res) {
 configApp = function(path) {
   try {
     config = toml.parse(fs.readFileSync(path));
-    console.log("reading config", config);
+    // console.log("reading config", config);
   } catch (_error) {
     console.log("Failed to parse configuration file " + path);
     return process.exit(1);
