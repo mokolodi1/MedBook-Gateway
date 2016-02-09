@@ -3,6 +3,8 @@ if (args.length < 1) {
   args = ["config.toml"]
 }
 
+var _ = require('underscore');
+
 var Cookies = require('cookies');
 var toml = require('toml');
 var fs = require('fs');
@@ -117,18 +119,7 @@ function launch(app, req, res) {
      console.log("launch", cmd);
 
      var logs = '/data/MedBook/Gateway/logs' + app.route;
-
-     var child = forever.start(cmd, {
-         silent : true,
-         fork: true,
-         killTree: false,
-         pidFile: './pidFile',
-
-         logFile: logs + '.log', // Path to log output from forever process (when daemonized)
-         outFile: logs + '.out', // Path to log output from child stdout
-         errFile: logs + '.err', // Path to log output from child stderr
-
-         env: {
+     var env = {
             HOME:  "/data/home/galaxy",
             SHELL: "/bin/bash",
             USER: "galaxy",
@@ -150,7 +141,22 @@ function launch(app, req, res) {
             MONGO_URL : config.daemons.mongodb.MONGO_URL,
             HOST : config.server.host,
             ROOT_URL: (config.server.ssl  ? "https://" : "http://") + config.server.host + app.route
-         },
+         };
+
+     var envFile = JSON.parse(fs.readFileSync("/data/MedBook/Gateway/DONOTCHECKINTOGIT.json", "utf8"))
+     _.extend(env, envFile);
+
+     var child = forever.start(cmd, {
+         silent : true,
+         fork: true,
+         killTree: false,
+         pidFile: './pidFile',
+
+         logFile: logs + '.log', // Path to log output from forever process (when daemonized)
+         outFile: logs + '.out', // Path to log output from child stdout
+         errFile: logs + '.err', // Path to log output from child stderr
+
+         env: env,
          cwd : app.cwd,
          max: 1,
      });
@@ -353,11 +359,12 @@ run = function() {
             req.headers.host = "su2c-dev.ucsc.edu";
             // console.log("xena redirecting to", target, "mapping ", origReqUrl, "to", req.url, req);
       } // if xena
+        //console.log("mapping", origReqUrl, target, req.url);
         proxy.web(req, res, {
           target: target,
           timeout:10000
-        },function(e){
-          // console.log("app error", origReqUrl, target, e.code);
+      },function(e){
+          console.log("app error", origReqUrl, target, e.code);
 
           if (app.run && app.cwd) {
   

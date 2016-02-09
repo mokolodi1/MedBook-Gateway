@@ -55,6 +55,14 @@ nonssl = 10000
    port = 8585
    menuItem = "Cbioportal"
 
+[daemons]
+    [daemons.mongodb]
+    MONGO_URL= "mongodb://localhost:27017/MedBook"
+    cwd = "/"
+    run = "mongod -f /etc/mongod.conf"
+    uid = "root"
+
+
 [final]
    redirect = "/"
    run = "./Telescope/run 10001"
