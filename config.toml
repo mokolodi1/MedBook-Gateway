@@ -7,16 +7,16 @@
   uid = "galaxy"
 
 [apps]
-   [apps.CRFs]
-   auth = false
-   route = "/CRF"
-   cwd = "../MedBook-CRFs/"
-   run = "/bin/sh -c ./run.sh"
-   port = 3000
-   menuPosition = 1
-   menuItem = "Forms"
-   containerName = "crfs"
-
+  #  [apps.CRFs]
+  #  auth = false
+  #  route = "/CRF"
+  #  cwd = "../MedBook-CRFs/"
+  #  run = "/bin/sh -c ./run.sh"
+  #  port = 3000
+  #  menuPosition = 1
+  #  menuItem = "Forms"
+  #  containerName = "crfs"
+   #
    [apps.Telescope]
    auth = false
    route = "/"
@@ -24,33 +24,33 @@
    menuItem = "Telescope"
    containerName = "telescope"
    port = 3000
-
-   [apps.galaxy]
-   auth = false
-   route = "/galaxy"
-   cwd = "../galaxy-dist"
-   run = "/bin/sh -c ./run"
-   port = 10010
-   menuPosition = 4
-   menuItem = "Galaxy"
-
-   [apps.fusion]
-   auth = false
-   route = "/fusion"
-   cwd = "../Medbook-Fusion5"
-   ping = "/fusion/packages/reload.js"
-   run = "/bin/sh -c ./run"
-   port = 3000
-   menuPosition = 5
-   menuItem = "Data Fusion"
-   containerName="fusion"
-
-
-   [apps.cbioportal]
-   auth = true
-   route = "/cbioportal"
-   port = 8585
-   menuItem = "Cbioportal"
+   #
+  #  [apps.galaxy]
+  #  auth = false
+  #  route = "/galaxy"
+  #  cwd = "../galaxy-dist"
+  #  run = "/bin/sh -c ./run"
+  #  port = 10010
+  #  menuPosition = 4
+  #  menuItem = "Galaxy"
+   #
+  #  [apps.fusion]
+  #  auth = false
+  #  route = "/fusion"
+  #  cwd = "../Medbook-Fusion5"
+  #  ping = "/fusion/packages/reload.js"
+  #  run = "/bin/sh -c ./run"
+  #  port = 3000
+  #  menuPosition = 5
+  #  menuItem = "Data Fusion"
+  #  containerName="fusion"
+  #
+  #
+  #  [apps.cbioportal]
+  #  auth = true
+  #  route = "/cbioportal"
+  #  port = 8585
+  #  menuItem = "Cbioportal"
 
    [apps.wrangler]
    auth = false
