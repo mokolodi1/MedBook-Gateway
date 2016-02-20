@@ -25,14 +25,14 @@
    containerName = "telescope"
    port = 3000
 
-   [apps.galaxy]
-   auth = false
-   route = "/galaxy"
-   cwd = "../galaxy-dist"
-   run = "/bin/sh -c ./run"
-   port = 10010
-   menuPosition = 4
-   menuItem = "Galaxy"
+#   [apps.galaxy]
+#   auth = false
+#   route = "/galaxy"
+#   cwd = "../galaxy-dist"
+#   run = "/bin/sh -c ./run"
+#   port = 10010
+#   menuPosition = 4
+#   menuItem = "Galaxy"
 
    [apps.fusion]
    auth = false
@@ -46,15 +46,15 @@
    containerName="fusion"
 
 
-   [apps.cbioportal]
-   auth = true
-   route = "/cbioportal"
-   port = 8585
-   menuItem = "Cbioportal"
+#   [apps.cbioportal]
+#   auth = true
+#   route = "/cbioportal"
+#   port = 8585
+#   menuItem = "Cbioportal"
 
    [apps.wrangler]
    auth = false
-   route = "/wrangler"
+   route = "/Wrangler"
    port = 3000
    menuPosition = 6
    menuItem = "Wrangler"
@@ -62,7 +62,7 @@
 
    [apps.jobRunner]
    auth = false
-   route = "/job-runner"
+   route = "/JobRunner"
    port = 3000
    menuPosition = 7
    menuItem = "Job Runner"
@@ -70,11 +70,20 @@
 
    [apps.workbench]
    auth = false
-   route = "/workbench"
+   route = "/Workbench"
    port = 3000
    menuPosition = 8
    menuItem = "Workbench"
    containerName = "workbench"
+
+   [apps.collaborationManager]
+   auth = false
+   route = "/CollaborationManager"
+   port = 3000
+   menuPosition = 8
+   menuItem = "Collaborations"
+   containerName = "collaboration-manager"
+
 
 [final]
    redirect = "/"
